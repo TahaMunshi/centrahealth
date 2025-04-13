@@ -20,13 +20,16 @@ function Login() {
         role
       });
       if (response.status === 200) {
+        const doctorName = response.data.name;
+        localStorage.setItem('doctorName', doctorName);
         navigate('/dashboard');
       }
     } catch (err) {
       setError('Invalid credentials');
     }
   };
-
+  
+///////Design is happening here---------------------------------------------------
   return (
     <div className="container mt-5" style={{ maxWidth: '400px' }}>
       <h3 className="text-center mb-4">Login to CentraHealth</h3>
@@ -54,6 +57,7 @@ function Login() {
 }
 
 function Dashboard() {
+  const doctorName = localStorage.getItem('doctorName') || 'Doctor';
   const [patients, setPatients] = useState([]);
   const [searchCNIC, setSearchCNIC] = useState('');
 
@@ -68,7 +72,7 @@ function Dashboard() {
 
   return (
     <div className="container mt-4">
-      <h2>Welcome, Doctor</h2>
+      <h2>Welcome, {doctorName}</h2>
       <div className="mb-3">
         <input className="form-control" placeholder="Search by CNIC" value={searchCNIC} onChange={(e) => setSearchCNIC(e.target.value)} />
         <button className="btn btn-secondary mt-2" onClick={fetchPatients}>Search</button>

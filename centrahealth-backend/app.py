@@ -21,23 +21,20 @@ def login():
     data = request.json
     email = data.get('email', '').strip()
     password = data.get('password', '').strip()
-    role = data.get('role', '').strip()
-
-    print(f"Login attempt: {email}, {password}, {role}")  # Debug
 
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT * FROM Doctor
+        SELECT Full_Name FROM Doctor
         WHERE LOWER(Email) = LOWER(?) AND Password = ?
     """, (email, password))
 
     row = cursor.fetchone()
-    print("Query result:", row)
 
     if row:
-        return jsonify({'message': 'Login successful'}), 200
+        return jsonify({'message': 'Login successful', 'name': row.Full_Name}), 200
     else:
         return jsonify({'error': 'Invalid credentials'}), 401
+
 
 
 # Get patients by CNIC search
