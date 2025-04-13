@@ -1,0 +1,15 @@
+# React - frontend
+centrahealth-frontend/node_modules/
+centrahealth-frontend/build/
+
+# Python - backend
+centrahealth-backend/__pycache__/
+*.pyc
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Env files
+*.env
