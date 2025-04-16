@@ -8,46 +8,37 @@ const API_BASE = 'http://localhost:5000';
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('Doctor');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post(`${API_BASE}/login`, {
+      const res = await axios.post(`${API_BASE}/login`, {
         email,
-        password,
-        role
+        password
       });
-      if (response.status === 200) {
-        const doctorName = response.data.name;
-        localStorage.setItem('doctorName', doctorName);
+  
+      if (res.status === 200) {
+        localStorage.setItem('doctorName', res.data.name);
+        localStorage.setItem('doctorEmail', email); // NEW LINE ✅
         navigate('/dashboard');
       }
     } catch (err) {
       setError('Invalid credentials');
     }
   };
-  
-///////Design is happening here---------------------------------------------------
+
   return (
     <div className="container mt-5" style={{ maxWidth: '400px' }}>
       <h3 className="text-center mb-4">Login to CentraHealth</h3>
       <div className="card p-4">
         <div className="mb-3">
           <label>Email</label>
-          <input className="form-control" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className="form-control" type="email" value={email} onChange={e => setEmail(e.target.value)} />
         </div>
         <div className="mb-3">
           <label>Password</label>
-          <input className="form-control" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </div>
-        <div className="mb-3">
-          <label>Role</label>
-          <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
-            <option>Doctor</option>
-            <option>Patient</option>
-          </select>
+          <input className="form-control" type="password" value={password} onChange={e => setPassword(e.target.value)} />
         </div>
         <button className="btn btn-primary w-100" onClick={handleLogin}>Login</button>
         {error && <div className="text-danger mt-3 text-center">{error}</div>}
@@ -57,22 +48,29 @@ function Login() {
 }
 
 function Dashboard() {
-  const doctorName = localStorage.getItem('doctorName') || 'Doctor';
-  const [patients, setPatients] = useState([]);
   const [searchCNIC, setSearchCNIC] = useState('');
+  const [patients, setPatients] = useState([]);
+  const doctorName = localStorage.getItem('doctorName') || 'Doctor';
 
   const fetchPatients = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/api/patients?cnic=${searchCNIC}`);
-      setPatients(response.data);
-    } catch (err) {
-      console.error(err);
-    }
+    const doctorEmail = localStorage.getItem('doctorEmail');
+    const res = await axios.get(`${API_BASE}/api/patients`, {
+      params: {
+        cnic: searchCNIC,
+        doctor_email: doctorEmail
+      }
+    });
+    if (!doctorEmail) {
+      alert("Doctor not authenticated");
+      return;
+    }    
+    setPatients(res.data);
   };
+  
 
   return (
     <div className="container mt-4">
-      <h2>Welcome, {doctorName}</h2>
+      <h2>Welcome, Dr. {doctorName}</h2>
       <div className="mb-3">
         <input className="form-control" placeholder="Search by CNIC" value={searchCNIC} onChange={(e) => setSearchCNIC(e.target.value)} />
         <button className="btn btn-secondary mt-2" onClick={fetchPatients}>Search</button>
@@ -88,8 +86,8 @@ function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {patients.map((p) => (
-              <tr key={p.Patient_ID}>
+            {patients.map((p, index) => (
+              <tr key={index}>
                 <td>{p.CNIC}</td>
                 <td>{p.Full_Name}</td>
                 <td>{p.DOB}</td>
