@@ -1,14 +1,21 @@
-import pyodbc
+import os
+import psycopg2
 import datetime
 
-# Connect to central database
-central_conn = pyodbc.connect(
-    'DRIVER={ODBC Driver 17 for SQL Server};'
-    'SERVER=localhost;'
-    'DATABASE=CentraHealth_CentralDB;'
-    'Trusted_Connection=yes;'
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "centrahealth")
+DB_USER = os.getenv("DB_USER", "centrauser")
+DB_PASS = os.getenv("DB_PASS", "centrapass")
+
+conn = psycopg2.connect(
+    host=DB_HOST,
+    port=DB_PORT,
+    dbname=DB_NAME,
+    user=DB_USER,
+    password=DB_PASS
 )
-central_cursor = central_conn.cursor()
+cursor = conn.cursor()
 
 # Define hospital databases
 hospitals = [

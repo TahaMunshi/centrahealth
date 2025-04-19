@@ -1,18 +1,30 @@
+import os
+import psycopg2
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import pyodbc
 
 app = Flask(__name__)
 CORS(app)
 
-# Connect to central DB
-central_conn = pyodbc.connect(
-    'DRIVER={ODBC Driver 17 for SQL Server};'
-    'SERVER=localhost;'
-    'DATABASE=CentraHealth_CentralDB;'
-    'Trusted_Connection=yes;'
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "ok"}), 200
+
+# Read DB config from environment (set in docker-compose)
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "centrahealth")
+DB_USER = os.getenv("DB_USER", "centrauser")
+DB_PASS = os.getenv("DB_PASS", "centrapass")
+
+conn = psycopg2.connect(
+    host=DB_HOST,
+    port=DB_PORT,
+    dbname=DB_NAME,
+    user=DB_USER,
+    password=DB_PASS
 )
-central_cursor = central_conn.cursor()
+cursor = conn.cursor()
 
 
 @app.route('/login', methods=['POST'])
