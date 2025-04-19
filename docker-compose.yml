@@ -1,0 +1,144 @@
+services:
+  postgres:
+    image: postgres:15
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "max_replication_slots=10"
+    environment:
+      POSTGRES_USER:     centrauser
+      POSTGRES_PASSWORD: centrapass
+      POSTGRES_DB:       centrahealth
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./centrahealth-backend
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: centrahealth
+      DB_USER: centrauser
+      DB_PASS: centrapass
+    ports:
+      - "5000:5000"
+
+  zookeeper:
+    image: bitnami/zookeeper:3.8
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnami/kafka:3
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
+
+  connect:
+    image: debezium/connect:2.5
+    depends_on:
+      - kafka
+      - postgres
+    ports:
+      - "8083:8083"
+    environment:
+      # Debezium settings
+      CONNECT_BOOTSTRAP_SERVERS: "kafka:9092"
+      CONNECT_REST_PORT:        "8083"
+      CONNECT_GROUP_ID:         "1"
+      CONNECT_CONFIG_STORAGE_TOPIC:  "connect-configs"
+      CONNECT_OFFSET_STORAGE_TOPIC:  "connect-offsets"
+      CONNECT_STATUS_STORAGE_TOPIC:  "connect-status"
+      CONNECT_PLUGIN_PATH:      "/kafka/connect"
+      # since single‑node
+      OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+      CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+      STATUS_STORAGE_REPLICATION_FACTOR: "1"
+    volumes:
+      - ./connectors:/etc/debezium:ro
+    entrypoint:
+      - /bin/bash
+      - -c
+    command: >
+      # start the normal Debezium process in background
+      /docker-entrypoint.sh connect-distributed /kafka/config/connect-distributed.properties &
+
+      echo "⏳ waiting for Connect REST API…";
+      until curl -s http://localhost:8083/ >/dev/null; do sleep 2; done;
+
+      echo "🚀 registering connectors:";
+      for cfg in /etc/debezium/*.json; do
+        echo "→ $cfg";
+        # the backslash before $ prevents Compose from trying to interpolate it
+        curl -X POST http://localhost:8083/connectors \
+             -H 'Content-Type: application/json' \
+             --data "@$$cfg"
+        echo;
+      done;
+
+      # bring the backgrounded Connect back to foreground
+      wait
+
+
+
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: docker/airflow/Dockerfile
+    image: centrahealth-airflow
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW__CORE__FERNET_KEY}"
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__DEFAULT_TIMEZONE: "Asia/Karachi"
+      TZ: "Asia/Karachi"
+    volumes:
+      - ./dags:/opt/airflow/dags
+    command: webserver
+    depends_on:
+      - postgres
+      - kafka
+      - connect
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: docker/airflow/Dockerfile
+    image: centrahealth-airflow
+    restart: always
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW__CORE__FERNET_KEY}"
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__DEFAULT_TIMEZONE: "Asia/Karachi"
+      TZ: "Asia/Karachi"
+    volumes:
+      - ./dags:/opt/airflow/dags
+    command: scheduler
+    depends_on:
+      - postgres
+          
+  
+volumes:
+  pgdata:
