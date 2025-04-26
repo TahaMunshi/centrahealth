@@ -13,35 +13,15 @@ A modern, responsive hospital dashboard built with React, Material-UI, and TypeS
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
-- npm or yarn
-- Docker (optional, for containerized deployment)
+- Docker
 
-## Installation
+## How to Run 
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd hospital-dashboard
-```
+- docker-compose up --build -d
+## To stop
+- docker-compose down
 
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Create a `.env` file in the root directory:
-```env
-REACT_APP_API_URL=http://localhost:8000/api
-```
-
-## Development
-
-To start the development server:
-
-```bash
-npm start
-```
+  
 
 The application will be available at `http://localhost:3000`.
 
