@@ -1,0 +1,8 @@
+# Remove this line as we are no longer using PostgreSQL
+# apache-airflow-providers-postgres==5.7.1
+pandas==1.5.3  # Last version supporting Python 3.8
+sqlalchemy==1.4.50  # Using 1.4.x for better compatibility with Airflow 
+# Add the Google provider for Firebase/PubSub interaction
+apache-airflow-providers-google 
+# Add the specific Firestore client library needed by the DAG
+google-cloud-firestore 

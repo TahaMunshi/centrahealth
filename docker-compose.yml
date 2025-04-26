@@ -1,0 +1,56 @@
+services:
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./airflow/dags/keys/service-account-key.json:/app/firebase-adminsdk.json
+    environment:
+      - FIREBASE_ADMIN_SDK_PATH=/app/firebase-adminsdk.json
+      - FIREBASE_WEB_API_KEY=AIzaSyAQJGd3Ja4l9ROjhi27paXYYntddzXqGMM
+
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_data:/opt/airflow
+    command: >
+      bash -c '
+      sleep 10;
+      airflow db init;
+      airflow db upgrade;
+      airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com;
+      airflow scheduler &
+      airflow webserver
+      '
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 'sqlite:////opt/airflow/airflow.db'
+      AIRFLOW__WEBSERVER__SECRET_KEY: 'your-secret-key'
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__ENABLE_XCOM_PICKLING: 'true'
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+      AIRFLOW_HOME: '/opt/airflow'
+      AIRFLOW__CORE__FERNET_KEY: ''
+
+volumes:
+  airflow_data:
